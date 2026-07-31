@@ -12,6 +12,13 @@ A Python port of [polymorph-js](https://github.com/notoriousb1t/polymorph) by Ch
 - supports all SVG path commands (M, L, H, V, C, S, Q, T, A, Z — absolute and relative)
 - free for commercial and non-commercial use under the MIT license
 
+## Demo
+
+An interactive demo (chain morph, subpath morph, live path data) lives at
+[pjfo.github.io/polymorph](https://pjfo.github.io/polymorph/). It is generated
+straight from this library by `demo/generate.py` and deployed by GitHub
+Actions on every push to `master`.
+
 ## Install
 
 ```bash
