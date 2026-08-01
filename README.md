@@ -19,12 +19,18 @@ An interactive demo (chain morph, subpath morph, live path data) lives at
 straight from this library by `demo/generate.py` and deployed by GitHub
 Actions on every push to `master`.
 
-## Examples
+## Manim plugin & examples
 
-[`examples/star_morph.py`](examples/star_morph.py) drives a
-[Manim](https://www.manim.community/) animation with polymorph: a small
-five-pointed star nested in the troughs of a larger one morphs outward to
-fill it. The rendered video (and the code that produced it) is on the
+[`manim-polymorph`](manim-polymorph/) packages this library as a
+[ManimCE](https://www.manim.community/) plugin: a `Polymorph` animation that
+morphs a `VMobject` through any number of SVG paths with polymorph's subpath
+alignment, plus helpers for building styled mobjects straight from `d`
+strings. See [its README](manim-polymorph/README.md).
+
+[`examples/star_morph.py`](examples/star_morph.py) uses the plugin to render
+a comparison video: a small five-pointed star nested in the troughs of a
+larger one morphs outward to fill it, side by side with Manim's built-in
+`Transform`. The video (and the code that produced it) is on the
 [demo page](https://pjfo.github.io/polymorph/).
 
 ## Install
