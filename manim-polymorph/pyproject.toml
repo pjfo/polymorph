@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "manim-polymorph"
+version = "0.1.0"
+description = "Polymorph SVG path morphing as a ManimCE plugin"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Christopher Wallis" },
+]
+keywords = ["manim", "svg", "path", "morph", "animation", "interpolation", "bezier"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+    "manim>=0.19",
+    "polymorph-py>=2.0.0",
+    "numpy>=1.26",
+]
+
+[project.urls]
+Homepage = "https://github.com/pjfo/polymorph"
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[project.entry-points."manim.plugins"]
+manim_polymorph = "manim_polymorph"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/manim_polymorph"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv.sources]
+polymorph-py = { path = "..", editable = true }
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
