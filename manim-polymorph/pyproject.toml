@@ -55,3 +55,9 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 extend-select = ["I"]
+
+[tool.ruff.lint.per-file-ignores]
+# tests import after pytest.importorskip("manim"), so module-level imports
+# cannot be first; ignored here rather than with noqa comments because E402
+# is default-enabled in some ruff versions and not others (RUF100 churn)
+"tests/*" = ["E402"]
