@@ -5,7 +5,7 @@ import pytest
 
 manim = pytest.importorskip("manim")
 
-from manim_polymorph import Polymorph, svg_path_mobjects  # noqa: E402
+from manim_polymorph import Polymorph, svg_path_mobjects
 
 HEART = (
     "M10 4 C10 2 8.5 1 7 1 C5.8 1 4.6 1.6 4 2.6 C3.4 1.6 2.2 1 1 1 "

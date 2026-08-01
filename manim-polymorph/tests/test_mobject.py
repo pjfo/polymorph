@@ -5,7 +5,7 @@ import pytest
 
 manim = pytest.importorskip("manim")
 
-from manim_polymorph.mobject import (  # noqa: E402
+from manim_polymorph.mobject import (
     SVGPathVMobject,
     svg_path_mobject,
     svg_path_mobjects,
