@@ -35,7 +35,7 @@ dependencies = [
 Homepage = "https://github.com/pjfo/polymorph"
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "ruff==0.16.1"]
 
 [project.entry-points."manim.plugins"]
 manim_polymorph = "manim_polymorph"

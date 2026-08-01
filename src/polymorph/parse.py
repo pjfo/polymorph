@@ -24,7 +24,7 @@ _COMMANDS = re.compile(r"([mhvlzcsqta])", re.IGNORECASE)
 
 
 class _ParseContext:
-    __slots__ = ("x", "y", "cx", "cy", "last_command", "command", "terms", "segments", "current")
+    __slots__ = ("command", "current", "cx", "cy", "last_command", "segments", "terms", "x", "y")
 
     def __init__(self) -> None:
         self.x = 0.0
