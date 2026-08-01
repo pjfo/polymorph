@@ -243,17 +243,16 @@ f(<span id="py-offset">0.0</span>)  <span style="opacity:.55"># &rarr; the strin
   <section class="card manim-card" aria-label="Manim example">
     <h2>polymorph &times; Manim</h2>
     <p>
-      polymorph is not tied to the browser: here it drives a
-      <a href="https://www.manim.community/">Manim</a>-rendered video, side by
-      side with Manim&rsquo;s own <code>Transform</code>. A small five-pointed
-      star sits with its points in the troughs of a larger one (rotated
-      36&deg;) and morphs outward to fill it. The generic point-interpolating
-      Transform (left) rotates the shape into place; with polymorph (right)
-      the vertex pairing is yours to choose, so the star&rsquo;s points stay
-      pinned in the troughs while its troughs erupt outward. polymorph&rsquo;s
-      parsed data is cubic beziers &mdash; the same primitive Manim&rsquo;s
-      <code>VMobject</code> uses &mdash; so the mixed coordinates map straight
-      onto the screen.
+      polymorph is not tied to the browser: the
+      <a href="https://github.com/pjfo/polymorph/tree/master/manim-polymorph">manim-polymorph</a>
+      plugin packages it for <a href="https://www.manim.community/">Manim</a>,
+      and here its <code>Polymorph</code> animation runs side by side with
+      Manim&rsquo;s own <code>Transform</code>. A small five-pointed star sits
+      with its points in the troughs of a larger one (rotated 36&deg;) and
+      morphs outward to fill it. The generic point-interpolating Transform
+      (left) rotates the shape into place; with polymorph (right) the vertex
+      pairing is yours to choose, so the star&rsquo;s points stay pinned in
+      the troughs while its troughs erupt outward.
     </p>
     <video id="manim-video" src="star-morph.mp4" poster="star-morph-poster.jpg"
            loop muted playsinline controls preload="metadata"
@@ -261,7 +260,7 @@ f(<span id="py-offset">0.0</span>)  <span style="opacity:.55"># &rarr; the strin
     <p>The complete code that produced the video (<code>examples/star_morph.py</code>):</p>
     <pre class="code-scroll"><code>&quot;&quot;&quot;A small five-pointed star morphs into the star that contains it,
 two ways at once: Manim&#x27;s built-in Transform on the left, polymorph
-on the right.
+on the right (via the manim-polymorph plugin).
 
 The inner star is rotated 36 degrees so its points rest in the outer
 star&#x27;s troughs. A generic point-interpolating Transform rotates the
@@ -269,44 +268,25 @@ shape into place. With polymorph the vertex pairing is yours to
 choose: order both paths from the same angle and the star&#x27;s points
 stay pinned while its troughs erupt outward.
 
-polymorph&#x27;s parsed data is cubic beziers -- the same primitive Manim&#x27;s
-VMobject uses -- so mixed coordinates map straight onto the screen.
-
-Render with Manim Community (pip install manim):
+Render with Manim Community (pip install manim manim-polymorph):
 
     manim -qm --fps 30 examples/star_morph.py StarMorph
 &quot;&quot;&quot;
 
 import math
 
-import numpy as np
-from manim import (
-    DOWN,
-    LEFT,
-    RIGHT,
-    WHITE,
-    Scene,
-    Text,
-    Transform,
-    ValueTracker,
-    VMobject,
-    always_redraw,
-    rate_functions,
-)
-
-from polymorph import mix_points, parse_points
-from polymorph.normalize import normalize_paths
+from manim import DOWN, LEFT, RIGHT, WHITE, Scene, Text, Transform, rate_functions
+from manim_polymorph import Polymorph, svg_path_mobjects
 
 TEAL = &quot;#2BC3D2&quot;
 INK = &quot;#0E1418&quot;
-SCALE = 20  # SVG units per scene unit
 SIDE = 3.55  # half-screen offset
 
 # trough/point radius ratio of a regular pentagram
 PENTAGRAM = math.sin(math.radians(18)) / math.sin(math.radians(54))
 
 STYLE = {&quot;stroke_color&quot;: TEAL, &quot;stroke_width&quot;: 5, &quot;fill_color&quot;: TEAL, &quot;fill_opacity&quot;: 0.35}
-GUIDE = {&quot;stroke_color&quot;: WHITE, &quot;stroke_opacity&quot;: 0.25, &quot;stroke_width&quot;: 2}
+GUIDE = {&quot;stroke_color&quot;: WHITE, &quot;stroke_opacity&quot;: 0.25, &quot;stroke_width&quot;: 2, &quot;fill_opacity&quot;: 0.0}
 
 
 def star_path(point_radius, rotation=0.0, trough_first=False):
@@ -323,23 +303,6 @@ def star_path(point_radius, rotation=0.0, trough_first=False):
     return &quot;M&quot; + &quot; L&quot;.join(f&quot;{x:.3f},{y:.3f}&quot; for x, y in vertices) + &quot; Z&quot;
 
 
-def to_scene(x, y):
-    return np.array([(x - 50) / SCALE, (50 - y) / SCALE, 0.0])
-
-
-def vmobject_from_segments(segments, **style):
-    mobject = VMobject(**style)
-    for n in segments:
-        mobject.start_new_path(to_scene(n[0], n[1]))
-        for i in range(2, len(n), 6):
-            mobject.add_cubic_bezier_curve_to(
-                to_scene(n[i], n[i + 1]),
-                to_scene(n[i + 2], n[i + 3]),
-                to_scene(n[i + 4], n[i + 5]),
-            )
-    return mobject
-
-
 class StarMorph(Scene):
     def construct(self):
         self.camera.background_color = INK
@@ -348,38 +311,36 @@ class StarMorph(Scene):
         # points sit exactly in the outer star&#x27;s troughs
         inner = star_path(45 * PENTAGRAM, rotation=math.pi / 5)
         outer = star_path(45)
-
-        # left: Manim&#x27;s Transform between the two paths as-authored
-        manim_star = vmobject_from_segments(parse_points(inner), **STYLE).shift(LEFT * SIDE)
-        manim_target = vmobject_from_segments(parse_points(outer), **STYLE).shift(LEFT * SIDE)
-
-        # right: polymorph, with the outer path re-ordered to start from the
-        # same angle as the inner one, so with optimize=&quot;none&quot; vertex k morphs
-        # to vertex k: pinned points, no twist
+        # the same outer star, re-ordered to list its vertices from the same
+        # angle as the inner one: with optimize=&quot;none&quot; vertex k morphs to
+        # vertex k, giving pinned points and no twist
         outer_aligned = star_path(45, rotation=math.pi / 5, trough_first=True)
-        left, right = normalize_paths(
-            parse_points(inner), parse_points(outer_aligned), optimize=&quot;none&quot;
-        )
-        t = ValueTracker(0.0)
-        poly_star = always_redraw(
-            lambda: vmobject_from_segments(
-                [mix_points(a, b, t.get_value()) for a, b in zip(left, right)], **STYLE
-            ).shift(RIGHT * SIDE)
+
+        # one shared coordinate mapping for every keyframe, so shapes keep
+        # their relative sizes and the morphs cannot jump
+        inner_mob, outer_mob, aligned_mob, guide_mob = svg_path_mobjects(
+            [inner, outer, outer_aligned, outer],
+            height=4.1,
+            styles=[STYLE, STYLE, STYLE, GUIDE],
         )
 
-        for side in (LEFT, RIGHT):
-            guide = vmobject_from_segments(parse_points(outer), **GUIDE).shift(side * SIDE)
-            label = Text(
-                &quot;Manim Transform&quot; if side is LEFT else &quot;polymorph&quot;,
-                font=&quot;monospace&quot;, font_size=24, color=WHITE, fill_opacity=0.6,
-            ).shift(side * SIDE + DOWN * 3.1)
-            self.add(guide, label)
+        manim_star = inner_mob.copy().shift(LEFT * SIDE)
+        manim_target = outer_mob.copy().shift(LEFT * SIDE)
+        poly_star = inner_mob.copy().shift(RIGHT * SIDE)
+        poly_target = aligned_mob.copy().shift(RIGHT * SIDE)
+
+        for side, name in ((LEFT, &quot;Manim Transform&quot;), (RIGHT, &quot;polymorph&quot;)):
+            self.add(guide_mob.copy().shift(side * SIDE))
+            self.add(
+                Text(name, font=&quot;monospace&quot;, font_size=24, color=WHITE, fill_opacity=0.6)
+                .shift(side * SIDE + DOWN * 3.1)
+            )
         self.add(manim_star, poly_star)
 
         self.wait(0.75)
         self.play(
             Transform(manim_star, manim_target),
-            t.animate.set_value(1.0),
+            Polymorph(poly_star, poly_target, optimize=&quot;none&quot;),
             run_time=4,
             rate_func=rate_functions.ease_in_out_sine,
         )
