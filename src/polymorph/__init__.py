@@ -14,11 +14,11 @@ __version__ = "2.0.0"
 __all__ = [
     "Origin",
     "Path",
+    "__version__",
     "interpolate",
     "js_round",
     "make_formatter",
     "mix_points",
     "parse_points",
     "render_path",
-    "__version__",
 ]

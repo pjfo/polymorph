@@ -18,8 +18,8 @@ from pathlib import Path as FilePath
 
 sys.path.insert(0, str(FilePath(__file__).resolve().parent.parent / "src"))
 
-from polymorph import Origin, parse_points  # noqa: E402
-from polymorph.normalize import normalize_paths  # noqa: E402
+from polymorph import Origin, parse_points
+from polymorph.normalize import normalize_paths
 
 
 def star(cx=50.0, cy=54.0, outer=38.0, inner=15.5, points=5) -> str:
