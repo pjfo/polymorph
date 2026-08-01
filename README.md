@@ -19,6 +19,14 @@ An interactive demo (chain morph, subpath morph, live path data) lives at
 straight from this library by `demo/generate.py` and deployed by GitHub
 Actions on every push to `master`.
 
+## Examples
+
+[`examples/star_morph.py`](examples/star_morph.py) drives a
+[Manim](https://www.manim.community/) animation with polymorph: a small
+five-pointed star nested in the troughs of a larger one morphs outward to
+fill it. The rendered video (and the code that produced it) is on the
+[demo page](https://pjfo.github.io/polymorph/).
+
 ## Install
 
 ```bash
