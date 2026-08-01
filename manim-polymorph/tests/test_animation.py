@@ -1,0 +1,126 @@
+"""Tests for the Polymorph animation, driven without a Scene. Requires manim."""
+
+import numpy as np
+import pytest
+
+manim = pytest.importorskip("manim")
+
+from manim_polymorph import Polymorph, svg_path_mobjects
+
+HEART = (
+    "M10 4 C10 2 8.5 1 7 1 C5.8 1 4.6 1.6 4 2.6 C3.4 1.6 2.2 1 1 1 "
+    "C-0.5 1 -2 2 -2 4 C-2 7 4 11 4 11 C4 11 10 7 10 4 Z"
+)
+STAR = "M5 0 L6.2 3.4 L10 3.4 L7 5.6 L8.1 9 L5 7 L1.9 9 L3 5.6 L0 3.4 L3.8 3.4 Z"
+
+
+def make_pair(**style):
+    return svg_path_mobjects([HEART, STAR], height=3, **style)
+
+
+def test_no_pop_at_endpoints():
+    # the regression polymorph's t=0/1 string short-circuit would cause
+    heart, star = make_pair()
+    anim = Polymorph(heart, star, rate_func=manim.linear)
+    anim.begin()
+    anim.interpolate(0.0)
+    at_zero = heart.points.copy()
+    anim.interpolate(1e-6)
+    assert np.abs(heart.points - at_zero).max() < 1e-3
+    anim.interpolate(1.0)
+    at_one = heart.points.copy()
+    anim.interpolate(1 - 1e-6)
+    assert np.abs(heart.points - at_one).max() < 1e-3
+
+
+def test_rate_func_is_applied():
+    # interpolate_mobject receives raw alpha; a constant-zero rate function
+    # must pin the start shape at every alpha
+    heart, star = make_pair()
+    anim = Polymorph(heart, star, rate_func=lambda a: 0.0)
+    anim.begin()
+    anim.interpolate(0.0)
+    start = heart.points.copy()
+    anim.interpolate(0.7)
+    assert np.allclose(heart.points, start)
+
+
+def test_shape_actually_morphs():
+    heart, star = make_pair()
+    star_points_before = star.points.copy()
+    anim = Polymorph(heart, star, rate_func=manim.linear)
+    anim.begin()
+    anim.interpolate(0.0)
+    start = heart.points.copy()
+    anim.interpolate(0.5)
+    assert not np.allclose(heart.points, start)
+    # the target itself must never be mutated
+    assert np.array_equal(star.points, star_points_before)
+
+
+def test_style_crossfade_midpoint():
+    heart, star = make_pair(styles=[{"fill_color": manim.PURE_RED}, {"fill_color": manim.PURE_BLUE}])
+    anim = Polymorph(heart, star, rate_func=manim.linear)
+    anim.begin()
+    anim.interpolate(0.5)
+    rgb = heart.get_fill_color().to_rgb()
+    assert rgb[0] == pytest.approx(0.5, abs=0.05)
+    assert rgb[2] == pytest.approx(0.5, abs=0.05)
+
+
+def test_crossfade_disabled_keeps_style():
+    heart, star = make_pair(styles=[{"fill_color": manim.PURE_RED}, {"fill_color": manim.PURE_BLUE}])
+    anim = Polymorph(heart, star, crossfade_style=False, rate_func=manim.linear)
+    anim.begin()
+    anim.interpolate(0.5)
+    assert heart.get_fill_color().to_hex() == manim.PURE_RED.to_hex()
+
+
+def test_finish_snaps_to_target():
+    heart, star = make_pair(styles=[{"fill_color": manim.PURE_RED}, {"fill_color": manim.PURE_BLUE}])
+    anim = Polymorph(heart, star, rate_func=manim.linear)
+    anim.begin()
+    anim.interpolate(1.0)
+    anim.finish()
+    assert len(heart.points) == len(star.points)
+    assert np.allclose(heart.points, star.points)
+    assert heart.get_fill_color().to_hex() == manim.PURE_BLUE.to_hex()
+
+
+def test_multi_target_sequencing():
+    heart, star = make_pair()
+    third = star.copy().shift(manim.RIGHT)
+    anim = Polymorph(heart, star, third, rate_func=manim.linear)
+    anim.begin()
+    anim.interpolate(0.5)  # end of first segment / start of second
+    mid = heart.points.copy()
+    anim.interpolate(1.0)
+    assert anim._morph.num_segments == 2
+    assert not np.allclose(mid, heart.points)
+
+
+def test_str_target_rejected():
+    heart, _ = make_pair()
+    with pytest.raises(TypeError, match="svg_path_mobjects"):
+        Polymorph(heart, "M0 0 L1 0 L1 1 Z")
+
+
+def test_zero_targets_rejected():
+    heart, _ = make_pair()
+    with pytest.raises(ValueError):
+        Polymorph(heart)
+
+
+def test_submobjects_with_points_rejected():
+    heart, star = make_pair()
+    group_owner = heart.copy()
+    group_owner.add(star.copy())
+    with pytest.raises(ValueError, match="submobjects"):
+        Polymorph(group_owner, star)
+
+
+def test_opengl_renderer_rejected(opengl_renderer):
+    heart, star = make_pair()
+    anim = Polymorph(heart, star)
+    with opengl_renderer(), pytest.raises(NotImplementedError):
+        anim.begin()
