@@ -148,6 +148,14 @@
     font-size: 12px;
     line-height: 1.6;
   }
+  .manim-card { margin-top: 16px; }
+  .manim-card video {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: #0E1418;
+  }
+  .code-scroll { max-height: 360px; overflow: auto; }
   code { font-family: var(--mono); }
   #d-output {
     display: block;
@@ -231,6 +239,115 @@ f = interpolate([square, circle, star, heart],
 f(<span id="py-offset">0.0</span>)  <span style="opacity:.55"># &rarr; the string above</span></code></pre>
     </section>
   </div>
+
+  <section class="card manim-card" aria-label="Manim example">
+    <h2>polymorph &times; Manim</h2>
+    <p>
+      polymorph is not tied to the browser: here it drives a
+      <a href="https://www.manim.community/">Manim</a>-rendered video. A small
+      five-pointed star sits with its points in the troughs of a larger one
+      (rotated 36&deg;); the point vertices stay pinned while the troughs erupt
+      outward into the big star&rsquo;s points. polymorph&rsquo;s parsed data is
+      cubic beziers &mdash; the same primitive Manim&rsquo;s <code>VMobject</code>
+      uses &mdash; so the mixed coordinates map straight onto the screen.
+    </p>
+    <video id="manim-video" src="star-morph.mp4" poster="star-morph-poster.jpg"
+           loop muted playsinline controls preload="metadata"
+           aria-label="Manim-rendered video of a small star morphing into the star that contains it"></video>
+    <p>The complete code that produced the video (<code>examples/star_morph.py</code>):</p>
+    <pre class="code-scroll"><code>&quot;&quot;&quot;A small five-pointed star morphs into the star that contains it.
+
+The inner star is rotated 36 degrees so its points rest in the outer
+star&#x27;s troughs. Vertices are paired so those points stay pinned while
+the inner troughs erupt outward into the big star&#x27;s points.
+
+polymorph&#x27;s parsed data is cubic beziers -- the same primitive Manim&#x27;s
+VMobject uses -- so mixed coordinates map straight onto the screen.
+
+Render with Manim Community (pip install manim):
+
+    manim -qm --fps 30 examples/star_morph.py StarMorph
+&quot;&quot;&quot;
+
+import math
+
+import numpy as np
+from manim import WHITE, Scene, ValueTracker, VMobject, always_redraw, rate_functions
+
+from polymorph import mix_points, parse_points
+from polymorph.normalize import normalize_paths
+
+TEAL = &quot;#2BC3D2&quot;
+INK = &quot;#0E1418&quot;
+SCALE = 15  # SVG units per scene unit
+
+# trough/point radius ratio of a regular pentagram
+PENTAGRAM = math.sin(math.radians(18)) / math.sin(math.radians(54))
+
+
+def star_path(point_radius, rotation=0.0, trough_first=False):
+    &quot;&quot;&quot;Five-pointed star centered at (50, 50) in a 100x100 SVG space.&quot;&quot;&quot;
+    radii = (point_radius, point_radius * PENTAGRAM)
+    if trough_first:
+        radii = radii[::-1]
+    vertices = []
+    for i in range(10):
+        angle = -math.pi / 2 + rotation + i * math.pi / 5
+        vertices.append(
+            (50 + radii[i % 2] * math.cos(angle), 50 + radii[i % 2] * math.sin(angle))
+        )
+    return &quot;M&quot; + &quot; L&quot;.join(f&quot;{x:.3f},{y:.3f}&quot; for x, y in vertices) + &quot; Z&quot;
+
+
+def to_scene(x, y):
+    return np.array([(x - 50) / SCALE, (50 - y) / SCALE, 0.0])
+
+
+def vmobject_from_segments(segments, **style):
+    mobject = VMobject(**style)
+    for n in segments:
+        mobject.start_new_path(to_scene(n[0], n[1]))
+        for i in range(2, len(n), 6):
+            mobject.add_cubic_bezier_curve_to(
+                to_scene(n[i], n[i + 1]),
+                to_scene(n[i + 2], n[i + 3]),
+                to_scene(n[i + 4], n[i + 5]),
+            )
+    return mobject
+
+
+class StarMorph(Scene):
+    def construct(self):
+        self.camera.background_color = INK
+
+        # inner point radius == outer trough radius, so the inner star&#x27;s
+        # points sit exactly in the outer star&#x27;s troughs
+        inner = star_path(45 * PENTAGRAM, rotation=math.pi / 5)
+        outer = star_path(45, rotation=math.pi / 5, trough_first=True)
+
+        # both paths list their vertices from the same angle, so with
+        # optimize=&quot;none&quot; vertex k morphs to vertex k: pinned points, no twist
+        left, right = normalize_paths(parse_points(inner), parse_points(outer), optimize=&quot;none&quot;)
+
+        guide = vmobject_from_segments(
+            parse_points(star_path(45)), stroke_color=WHITE, stroke_opacity=0.25, stroke_width=2
+        )
+        t = ValueTracker(0.0)
+        morph = always_redraw(
+            lambda: vmobject_from_segments(
+                [mix_points(a, b, t.get_value()) for a, b in zip(left, right)],
+                stroke_color=TEAL,
+                stroke_width=5,
+                fill_color=TEAL,
+                fill_opacity=0.35,
+            )
+        )
+
+        self.add(guide, morph)
+        self.wait(0.75)
+        self.play(t.animate.set_value(1.0), run_time=4, rate_func=rate_functions.ease_in_out_sine)
+        self.wait(1.25)</code></pre>
+  </section>
 
   <footer>
     Generated by <code>demo/generate.py</code> using
@@ -354,6 +471,12 @@ f(<span id="py-offset">0.0</span>)  <span style="opacity:.55"># &rarr; the strin
   setHero(0);
   setMulti(0);
   requestAnimationFrame(tick);
+
+  const manimVideo = document.getElementById("manim-video");
+  if (manimVideo && !reduceMotion) {
+    manimVideo.autoplay = true;
+    manimVideo.play().catch(() => {});
+  }
 </script>
 </body>
 </html>
