@@ -311,12 +311,16 @@ f(<span id="py-offset">0.0</span>)  <span style="opacity:.55"># &rarr; the strin
     <h2>polymorph &times; Manim</h2>
     <p>
       polymorph is not tied to the browser: here it drives a
-      <a href="https://www.manim.community/">Manim</a>-rendered video. A small
-      five-pointed star sits with its points in the troughs of a larger one
-      (rotated 36&deg;); the point vertices stay pinned while the troughs erupt
-      outward into the big star&rsquo;s points. polymorph&rsquo;s parsed data is
-      cubic beziers &mdash; the same primitive Manim&rsquo;s <code>VMobject</code>
-      uses &mdash; so the mixed coordinates map straight onto the screen.
+      <a href="https://www.manim.community/">Manim</a>-rendered video, side by
+      side with Manim&rsquo;s own <code>Transform</code>. A small five-pointed
+      star sits with its points in the troughs of a larger one (rotated
+      36&deg;) and morphs outward to fill it. The generic point-interpolating
+      Transform (left) rotates the shape into place; with polymorph (right)
+      the vertex pairing is yours to choose, so the star&rsquo;s points stay
+      pinned in the troughs while its troughs erupt outward. polymorph&rsquo;s
+      parsed data is cubic beziers &mdash; the same primitive Manim&rsquo;s
+      <code>VMobject</code> uses &mdash; so the mixed coordinates map straight
+      onto the screen.
     </p>
     <video id="manim-video" src="star-morph.mp4" poster="star-morph-poster.jpg"
            loop muted playsinline controls preload="metadata"
