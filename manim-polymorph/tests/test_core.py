@@ -8,11 +8,13 @@ from manim_polymorph.core import (
     NumericMorph,
     manim_subpaths_to_polymorph_data,
     polymorph_data_to_manim_points,
+    share_subpaths,
     subpath_to_manim_points,
 )
 
 SQUARE = "M0 0 L10 0 L10 10 L0 10 Z"
 CIRCLE = "M50 25 A25 25 0 1 1 0 25 A25 25 0 1 1 50 25 Z"
+TWO_SQUARES = "M0 0 L10 0 L10 10 L0 10 Z M20 0 L30 0 L30 10 L20 10 Z"
 
 
 def test_subpath_layout_and_anchor_duplication():
@@ -114,3 +116,34 @@ def test_numeric_morph_overshoot_extrapolates():
 def test_numeric_morph_requires_two_keyframes():
     with pytest.raises(ValueError):
         NumericMorph([parse_points(SQUARE)])
+
+
+def test_share_subpaths_clones_smaller_side():
+    left, right = share_subpaths(parse_points(SQUARE), parse_points(TWO_SQUARES))
+    assert len(left) == len(right) == 2
+    assert left[0] == left[1]  # the lone square is cloned, not degenerate
+
+
+def test_share_mode_morphs_from_real_geometry():
+    # 1 subpath -> 2 subpaths: at t=0 both halves are full copies of the
+    # square, so nothing grows out of a point
+    morph = NumericMorph([parse_points(SQUARE), parse_points(TWO_SQUARES)])
+    p0 = morph.points_at(0.0)
+    first, second = p0[: len(p0) // 2], p0[len(p0) // 2 :]
+    assert np.allclose(first, second)
+    assert np.ptp(second[:, :2], axis=0).min() > 0
+
+
+def test_grow_mode_keeps_degenerate_filler():
+    morph = NumericMorph(
+        [parse_points(SQUARE), parse_points(TWO_SQUARES)], fill_mode="grow"
+    )
+    p0 = morph.points_at(0.0)
+    second = p0[len(p0) // 2 :]
+    # the filler subpath collapses to a single origin point at t=0
+    assert np.ptp(second[:, :2], axis=0).max() == 0
+
+
+def test_invalid_fill_mode_rejected():
+    with pytest.raises(ValueError, match="fill_mode"):
+        NumericMorph([parse_points(SQUARE), parse_points(CIRCLE)], fill_mode="clone")
