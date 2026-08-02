@@ -77,6 +77,13 @@ consecutive pairs, like polymorph's own multi-path `interpolate`. Targets do
 not need to be added to the scene, and are never mutated. `PolymorphTransform`
 is an alias.
 
+Mobjects whose geometry lives in submobjects — `Text`, `Tex`, `VGroup`s, SVG
+imports — are flattened: every subpath in the family joins one morph, so a
+word morphs glyph subpaths and all. While morphing, the animated mobject is
+collapsed to a single flat `VMobject` styled after its first drawn family
+member; with `snap_to_target` a structured target's submobjects are restored
+on finish.
+
 Keyword options, besides the usual `Animation` ones (`run_time`, `rate_func`,
 ...):
 
@@ -121,8 +128,9 @@ keeps raw SVG user units.
 - **Cairo renderer only.** The OpenGL renderer's 3-point quadratic curves are
   not supported; a clear `NotImplementedError` is raised.
 - 2D paths only (z is always 0), matching SVG.
-- `Polymorph` animates a single `VMobject`'s own points; `VGroup`s and
-  submobject hierarchies are not supported.
+- Submobject hierarchies are flattened for the morph, so per-submobject
+  styling (e.g. `Text` with per-glyph colors) collapses to the first drawn
+  member's style until the animation finishes.
 - Style crossfading rides Manim's `interpolate_color`; gradients with a
   different number of colors per keyframe are not aligned (single colors and
   equal-length gradients work).

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+import numpy as np
 from manim import Animation, VMobject
 from polymorph.normalize import Origin
 
@@ -13,6 +14,26 @@ from .mobject import _ensure_cairo_cubics
 __all__ = ["Polymorph", "PolymorphTransform"]
 
 
+def _family_subpaths(vm: VMobject) -> list[np.ndarray]:
+    """All subpaths in a VMobject's family, in draw order.
+
+    Collecting per member (rather than concatenating raw points) keeps
+    subpath boundaries exact even when one member's path happens to end
+    where the next begins.
+    """
+    return [sp for m in vm.family_members_with_points() for sp in m.get_subpaths()]
+
+
+def _style_donor(vm: VMobject) -> VMobject:
+    """The family member whose style represents the whole mobject.
+
+    For a plain shape this is the mobject itself; for Text/Tex it is the
+    first glyph, since the parent carries no drawn style of its own.
+    """
+    members = vm.family_members_with_points()
+    return members[0] if members else vm
+
+
 class Polymorph(Animation):
     """Morph a VMobject through one or more target shapes using polymorph.
 
@@ -20,6 +41,13 @@ class Polymorph(Animation):
     subpaths grow from a configurable origin, and closed subpaths rotate
     their start point toward that origin — producing stable morphs between
     structurally different shapes.
+
+    Mobjects whose geometry lives in submobjects (Text, Tex, VGroup, SVG
+    imports) are flattened: every subpath in the family joins one morph.
+    While morphing, the animated mobject is collapsed to a single flat
+    VMobject styled after its first drawn family member — per-glyph colors
+    are not preserved mid-morph — and with snap_to_target the target's full
+    submobject structure is restored on finish.
 
     mobject: the VMobject to animate (morphed in place).
     targets: one or more target VMobjects; with several, the run time is
@@ -63,12 +91,6 @@ class Polymorph(Animation):
                 raise TypeError(f"targets must be VMobjects, got {type(target).__name__}")
         if not isinstance(mobject, VMobject):
             raise TypeError(f"mobject must be a VMobject, got {type(mobject).__name__}")
-        for vm in (mobject, *targets):
-            if any(len(sub.points) for sub in vm.submobjects):
-                raise ValueError(
-                    "Polymorph morphs a single VMobject's own points; "
-                    "submobjects with points are not supported"
-                )
         if not isinstance(origin, Origin):
             origin = Origin(*origin)
 
@@ -80,17 +102,24 @@ class Polymorph(Animation):
         self.snap_to_target = snap_to_target
         self._morph: NumericMorph | None = None
         self._keyframes: list[VMobject] = []
+        self._donors: list[VMobject] = []
         super().__init__(mobject, **kwargs)
 
     def begin(self) -> None:
         _ensure_cairo_cubics()
         self._keyframes = [self.mobject.copy()] + [t.copy() for t in self.targets]
         datas = [
-            manim_subpaths_to_polymorph_data(vm.get_subpaths()) for vm in self._keyframes
+            manim_subpaths_to_polymorph_data(_family_subpaths(vm)) for vm in self._keyframes
         ]
         for vm, data in zip(self._keyframes, datas):
             if not data:
                 raise ValueError(f"keyframe {vm} has no points to morph")
+        self._donors = [_style_donor(vm) for vm in self._keyframes]
+        if self.mobject.submobjects:
+            # collapse the family onto the parent for the duration of the
+            # morph; interpolate_mobject supplies the flattened points
+            self.mobject.submobjects = []
+            self.mobject.match_style(self._donors[0])
         origin = self.origin
         if not origin.absolute:
             # relative origins keep the SVG mental model, where (0, 0) is the
@@ -112,7 +141,7 @@ class Polymorph(Animation):
         if self.crossfade_style:
             h, s = self._morph.segment_of(t)
             self.mobject.interpolate_color(
-                self._keyframes[h], self._keyframes[h + 1], min(max(s, 0.0), 1.0)
+                self._donors[h], self._donors[h + 1], min(max(s, 0.0), 1.0)
             )
 
     def finish(self) -> None:
@@ -121,6 +150,9 @@ class Polymorph(Animation):
             final = self._keyframes[-1]
             self.mobject.set_points(final.points.copy())
             self.mobject.match_style(final)
+            # hand over the keyframe copy's family so structured targets
+            # (Text, Tex, groups) come out with their glyphs intact
+            self.mobject.submobjects = list(final.submobjects)
 
 
 PolymorphTransform = Polymorph
