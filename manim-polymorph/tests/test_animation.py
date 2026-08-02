@@ -111,12 +111,65 @@ def test_zero_targets_rejected():
         Polymorph(heart)
 
 
-def test_submobjects_with_points_rejected():
+def test_group_source_is_flattened():
     heart, star = make_pair()
-    group_owner = heart.copy()
-    group_owner.add(star.copy())
-    with pytest.raises(ValueError, match="submobjects"):
-        Polymorph(group_owner, star)
+    group = manim.VGroup(heart.copy(), star.copy())
+    target = heart.copy().shift(manim.RIGHT)
+    anim = Polymorph(group, target, rate_func=manim.linear)
+    anim.begin()
+    # the family collapses onto the parent for the duration of the morph
+    assert group.submobjects == []
+    assert len(group.points) > 0
+    anim.interpolate(1.0)
+    anim.finish()
+    assert np.allclose(group.points, target.points)
+
+
+def test_structured_target_restored_on_finish():
+    heart, star = make_pair()
+    group_target = manim.VGroup(heart.copy(), star.copy().shift(manim.RIGHT))
+    source = heart.copy()
+    anim = Polymorph(source, group_target, rate_func=manim.linear)
+    anim.begin()
+    anim.interpolate(1.0)
+    anim.finish()
+    # the target's submobject structure comes back, geometry intact
+    got = [m.points for m in source.family_members_with_points()]
+    want = [m.points for m in group_target.family_members_with_points()]
+    assert len(got) == len(want)
+    for g, w in zip(got, want):
+        assert np.allclose(g, w)
+
+
+def test_text_morphs_and_crossfades():
+    text = manim.Text("Hi", fill_color=manim.PURE_RED, fill_opacity=1.0)
+    heart, _ = make_pair(styles=[{"fill_color": manim.PURE_BLUE}, {}])
+    anim = Polymorph(text, heart, rate_func=manim.linear)
+    anim.begin()
+    assert text.submobjects == []
+    anim.interpolate(0.0)
+    start = text.points.copy()
+    assert len(start) > 0
+    anim.interpolate(0.5)
+    assert not np.allclose(text.points, start)
+    # style rides the first glyph's fill, crossfading toward the target
+    rgb = text.get_fill_color().to_rgb()
+    assert rgb[0] == pytest.approx(0.5, abs=0.05)
+    assert rgb[2] == pytest.approx(0.5, abs=0.05)
+
+
+def test_text_target_keeps_glyphs():
+    heart, _ = make_pair()
+    text = manim.Text("Hi")
+    anim = Polymorph(heart, text, rate_func=manim.linear)
+    anim.begin()
+    anim.interpolate(1.0)
+    anim.finish()
+    got = [m.points for m in heart.family_members_with_points()]
+    want = [m.points for m in text.family_members_with_points()]
+    assert len(got) == len(want) == 2
+    for g, w in zip(got, want):
+        assert np.allclose(g, w)
 
 
 def test_opengl_renderer_rejected(opengl_renderer):
