@@ -47,6 +47,9 @@ class PolymorphDemo(Scene):
         self.wait(0.3)
 
         # multi-keyframe sequence morphing through the ring and back to the
-        # heart, with filler subpaths growing from the shape's center
-        self.play(Polymorph(shape, ring, heart, run_time=4, origin=(0.5, 0.5)))
+        # heart; fill_mode="grow" makes the ring's extra subpath grow from
+        # the shape's center instead of splitting off a clone (the default)
+        self.play(
+            Polymorph(shape, ring, heart, run_time=4, fill_mode="grow", origin=(0.5, 0.5))
+        )
         self.wait(0.5)
