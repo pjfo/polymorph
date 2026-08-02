@@ -99,6 +99,26 @@ def test_multi_target_sequencing():
     assert not np.allclose(mid, heart.points)
 
 
+def test_fill_mode_passes_through():
+    heart, star = make_pair()
+    pair_target = manim.VGroup(star.copy(), star.copy().shift(manim.RIGHT * 4))
+
+    share = Polymorph(heart.copy(), pair_target, rate_func=manim.linear)
+    share.begin()
+    share.interpolate(0.0)
+    pts = share.mobject.points
+    first, second = pts[: len(pts) // 2], pts[len(pts) // 2 :]
+    # both subpaths start as the same full heart — no degenerate filler
+    assert np.allclose(first, second)
+    assert np.ptp(second[:, :2], axis=0).min() > 0
+
+    grow = Polymorph(heart.copy(), pair_target, fill_mode="grow", rate_func=manim.linear)
+    grow.begin()
+    grow.interpolate(0.0)
+    spans = [np.ptp(sp[:, :2], axis=0).max() for sp in grow.mobject.get_subpaths()]
+    assert min(spans) == 0  # the filler subpath starts collapsed at the origin
+
+
 def test_str_target_rejected():
     heart, _ = make_pair()
     with pytest.raises(TypeError, match="svg_path_mobjects"):

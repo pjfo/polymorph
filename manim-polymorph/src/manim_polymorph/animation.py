@@ -37,10 +37,13 @@ def _style_donor(vm: VMobject) -> VMobject:
 class Polymorph(Animation):
     """Morph a VMobject through one or more target shapes using polymorph.
 
-    Unlike Transform, subpaths are paired by sorted perimeter, missing
-    subpaths grow from a configurable origin, and closed subpaths rotate
-    their start point toward that origin — producing stable morphs between
-    structurally different shapes.
+    Unlike Transform, subpaths are paired by sorted perimeter and closed
+    subpaths rotate their start point toward a configurable origin —
+    producing stable morphs between structurally different shapes. When
+    subpath counts differ, the smaller keyframe's subpaths are shared out
+    across the larger's by default (one shape splits into many, many
+    merge into one, flubber-style); fill_mode="grow" restores polymorph's
+    own behavior of growing the missing subpaths from the origin.
 
     Mobjects whose geometry lives in submobjects (Text, Tex, VGroup, SVG
     imports) are flattened: every subpath in the family joins one morph.
@@ -53,10 +56,14 @@ class Polymorph(Animation):
     targets: one or more target VMobjects; with several, the run time is
         divided evenly between consecutive pairs, like polymorph's own
         multi-path interpolate. Targets do not need to be on screen.
-    origin: where filler subpaths grow from and where closed subpaths start
-        drawing. Relative origins use SVG semantics — (0, 0) is the top-left
-        of each subpath's bounding box — while Origin(..., absolute=True)
-        is a scene coordinate.
+    fill_mode: how subpath-count mismatches between keyframes are
+        resolved. "share" (default) clones the smaller keyframe's
+        subpaths so every subpath morphs from/to real geometry; "grow"
+        pads with degenerate subpaths that grow from the origin.
+    origin: where filler subpaths grow from (fill_mode="grow") and where
+        closed subpaths start drawing. Relative origins use SVG semantics
+        — (0, 0) is the top-left of each subpath's bounding box — while
+        Origin(..., absolute=True) is a scene coordinate.
     add_points: extra curves added to every subpath (smooths morphs between
         shapes of very different complexity).
     optimize: "fill" (default) aligns subpaths automatically; "none"
@@ -71,6 +78,7 @@ class Polymorph(Animation):
         self,
         mobject: VMobject,
         *targets: VMobject,
+        fill_mode: Literal["share", "grow"] = "share",
         origin: tuple[float, float] | Origin = (0.0, 0.0),
         add_points: int = 0,
         optimize: Literal["fill", "none"] = "fill",
@@ -95,6 +103,7 @@ class Polymorph(Animation):
             origin = Origin(*origin)
 
         self.targets = targets
+        self.fill_mode = fill_mode
         self.origin = origin
         self.add_points = add_points
         self.optimize = optimize
@@ -130,6 +139,7 @@ class Polymorph(Animation):
             optimize=self.optimize,
             origin=origin,
             add_points=self.add_points,
+            fill_mode=self.fill_mode,
         )
         super().begin()
 

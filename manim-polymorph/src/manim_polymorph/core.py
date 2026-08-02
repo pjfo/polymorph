@@ -13,7 +13,7 @@ from collections.abc import Iterable, Sequence
 from itertools import pairwise
 
 import numpy as np
-from polymorph.normalize import Origin, normalize_paths
+from polymorph.normalize import Origin, normalize_paths, sorted_segments
 
 DEFAULT_ORIGIN = Origin(0.0, 0.0)
 
@@ -21,6 +21,7 @@ __all__ = [
     "NumericMorph",
     "manim_subpaths_to_polymorph_data",
     "polymorph_data_to_manim_points",
+    "share_subpaths",
     "subpath_to_manim_points",
 ]
 
@@ -89,6 +90,27 @@ def manim_subpaths_to_polymorph_data(
     return data
 
 
+def share_subpaths(
+    left: Sequence[Sequence[float]], right: Sequence[Sequence[float]]
+) -> tuple[list[list[float]], list[list[float]]]:
+    """Balance subpath counts by cloning the smaller path's subpaths.
+
+    Clones cycle through the smaller side largest-perimeter first, so
+    normalize_paths pairs every subpath on the larger side with real
+    geometry instead of a degenerate origin point: one shape splits into
+    many, many shapes merge into one.
+    """
+    left = [list(ns) for ns in left]
+    right = [list(ns) for ns in right]
+    if len(left) == len(right) or not left or not right:
+        return left, right
+    smaller, larger = (left, right) if len(left) < len(right) else (right, left)
+    donors = sorted_segments(smaller)
+    clones = [list(donors[i % len(donors)]) for i in range(len(larger) - len(smaller))]
+    smaller.extend(clones)
+    return left, right
+
+
 class NumericMorph:
     """Morph between keyframe paths entirely on numpy point arrays.
 
@@ -98,6 +120,11 @@ class NumericMorph:
     with a single vectorized lerp, so t=0 and t=1 have exactly the same
     point structure as every interior frame (no polymorph string
     short-circuit, no coordinate rounding).
+
+    fill_mode: how subpath-count mismatches are resolved. "share"
+    (default) clones the smaller keyframe's subpaths so every subpath
+    morphs from/to real geometry; "grow" keeps polymorph's own behavior
+    of padding with degenerate subpaths that grow from the origin.
     """
 
     def __init__(
@@ -107,14 +134,21 @@ class NumericMorph:
         optimize: str = "fill",
         origin: Origin = DEFAULT_ORIGIN,
         add_points: int = 0,
+        fill_mode: str = "share",
     ) -> None:
         if len(keyframes) < 2:
             raise ValueError("at least two keyframes are required")
+        if fill_mode not in ("share", "grow"):
+            raise ValueError(f"fill_mode must be 'share' or 'grow', got {fill_mode!r}")
         self._segments: list[tuple[np.ndarray, np.ndarray]] = []
         for left, right in pairwise(keyframes):
+            left = [list(ns) for ns in left]
+            right = [list(ns) for ns in right]
+            if fill_mode == "share" and optimize == "fill":
+                left, right = share_subpaths(left, right)
             matrix = normalize_paths(
-                [list(ns) for ns in left],
-                [list(ns) for ns in right],
+                left,
+                right,
                 optimize=optimize,
                 origin=origin,
                 add_points=add_points,

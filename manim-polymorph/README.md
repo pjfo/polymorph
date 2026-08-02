@@ -8,10 +8,14 @@ built-in `Transform` machinery.
 Why not just `Transform`? Manim's `VMobject.align_points` pairs subpaths
 strictly by document order and pads missing subpaths with degenerate curves
 collapsed onto a single point. Polymorph instead sorts subpaths by perimeter
-before pairing them, grows filler subpaths from a configurable origin, and
-rotates each closed subpath's start point toward that origin — which makes
-morphs between structurally different shapes (different subpath counts,
-holes, wildly different point counts) look intentional rather than glitchy.
+before pairing them and rotates each closed subpath's start point toward a
+configurable origin — which makes morphs between structurally different
+shapes (different subpath counts, holes, wildly different point counts) look
+intentional rather than glitchy. When subpath counts differ, the smaller
+keyframe's subpaths are shared out across the larger's by default — one
+shape splits into every glyph of a word, and every glyph merges back into
+one shape — with polymorph's grow-from-origin filler available as
+`fill_mode="grow"`.
 
 ## Install
 
@@ -87,10 +91,14 @@ on finish.
 Keyword options, besides the usual `Animation` ones (`run_time`, `rate_func`,
 ...):
 
-- `origin=(0, 0)` — where filler subpaths grow from and where closed subpaths
-  start drawing. Relative origins use SVG semantics ((0, 0) is the top-left of
-  each subpath's bounding box; (0.5, 0.5) is the center);
-  `Origin(x, y, absolute=True)` is a scene coordinate.
+- `fill_mode="share"` — how subpath-count mismatches are resolved. `"share"`
+  clones the smaller keyframe's subpaths so every subpath morphs from/to real
+  geometry (flubber-style split/merge); `"grow"` pads with degenerate
+  subpaths that grow from the origin (polymorph's own behavior).
+- `origin=(0, 0)` — where filler subpaths grow from (`fill_mode="grow"`) and
+  where closed subpaths start drawing. Relative origins use SVG semantics
+  ((0, 0) is the top-left of each subpath's bounding box; (0.5, 0.5) is the
+  center); `Origin(x, y, absolute=True)` is a scene coordinate.
 - `add_points=0` — extra curves added to every subpath; raise it to smooth
   morphs between shapes of very different complexity.
 - `optimize="fill"` — `"fill"` aligns structurally different paths;
